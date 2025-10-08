@@ -17,4 +17,6 @@ pub enum LauncherError {
     Toml(#[from] toml::de::Error),
     #[error("X11 parsing error: {0}")]
     X11Parse(#[from] x11rb::errors::ParseError),
+    #[error("Error: {0}")]
+    Other(String),
 }

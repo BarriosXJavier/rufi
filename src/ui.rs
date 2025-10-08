@@ -1,26 +1,24 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-    thread,
-    time::Duration,
-};
-use x11rb::{
-    connection::Connection,
-    protocol::{xproto::*, Event},
-    rust_connection::RustConnection,
-    COPY_FROM_PARENT,
-};
 use crate::{
-    commands::{collect_applications, collect_commands, launch_item, ItemCache},
+    commands::{ItemCache, collect_applications, collect_commands, launch_item},
     config::Config,
     error::LauncherError,
     fuzzy,
 };
 use image::ImageReader;
-use resvg::tiny_skia::{Pixmap};
-use resvg::usvg;
+use resvg::tiny_skia::Pixmap;
 use resvg::tiny_skia::Transform;
-
+use resvg::usvg;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+    thread,
+};
+use x11rb::{
+    COPY_FROM_PARENT,
+    connection::Connection,
+    protocol::{Event, xproto::*},
+    rust_connection::RustConnection,
+};
 
 fn find_icon(icon_name: &str) -> Option<String> {
     if icon_name.contains('/') {
@@ -36,7 +34,9 @@ fn find_icon(icon_name: &str) -> Option<String> {
         "/usr/share/pixmaps".to_string(),
     ];
 
-    let sizes = ["256x256", "128x128", "64x64", "48x48", "32x32", "16x16", "scalable"];
+    let sizes = [
+        "256x256", "128x128", "64x64", "48x48", "32x32", "16x16", "scalable",
+    ];
     let exts = [".png", ".svg"];
 
     for theme in &icon_themes {
@@ -64,7 +64,6 @@ fn find_icon(icon_name: &str) -> Option<String> {
     None
 }
 
-
 fn draw_icon(
     conn: &RustConnection,
     window: Window,
@@ -88,11 +87,7 @@ fn draw_icon(
             })?;
 
             let mut pixmap = Pixmap::new(size as u32, size as u32).unwrap();
-            resvg::render(
-                &tree,
-                Transform::default(),
-                &mut pixmap.as_mut(),
-            );
+            resvg::render(&tree, Transform::default(), &mut pixmap.as_mut());
             pixmap.data().to_vec()
         } else {
             let img = ImageReader::open(&icon_path)
@@ -167,14 +162,17 @@ pub fn draw_text(
     Ok(())
 }
 
-pub fn setup_keyboard_map(conn: &RustConnection) -> Result<HashMap<u8, Vec<String>>, LauncherError> {
+pub fn setup_keyboard_map(
+    conn: &RustConnection,
+) -> Result<HashMap<u8, Vec<String>>, LauncherError> {
     let mut map = HashMap::new();
 
     let min_keycode = conn.setup().min_keycode;
     let max_keycode = conn.setup().max_keycode;
 
-    let keyboard_mapping_cookie = conn.get_keyboard_mapping(min_keycode, (max_keycode - min_keycode + 1) as u8)?;
-    
+    let keyboard_mapping_cookie =
+        conn.get_keyboard_mapping(min_keycode, (max_keycode - min_keycode + 1) as u8)?;
+
     if let Ok(keyboard_mapping) = keyboard_mapping_cookie.reply() {
         for keycode in min_keycode..=max_keycode {
             let index = (keycode - min_keycode) as usize;
@@ -233,7 +231,7 @@ fn keysym_to_char(keysym: u32) -> Option<String> {
     match keysym {
         0x0020..=0x007E => Some((keysym as u8 as char).to_string()), // ASCII printable
         0xFF08 => None,                                              // Backspace
-        0xFF09 => Some("	".to_string()),                            // Tab
+        0xFF09 => Some("	".to_string()),                             // Tab
         0xFF0D => None,                                              // Enter
         0xFF1B => None,                                              // Escape
         0xFF51..=0xFF58 => None,                                     // Arrow keys, etc.
@@ -275,18 +273,23 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
     conn.change_window_attributes(win, &ChangeWindowAttributesAux::new().override_redirect(1))?;
 
     conn.map_window(win)?;
+    conn.flush()?;
+
+    let grab_cookie = conn.grab_keyboard(
+        true, // owner_events
+        win,
+        x11rb::CURRENT_TIME,
+        GrabMode::ASYNC,
+        GrabMode::ASYNC,
+    )?;
+    if grab_cookie.reply()?.status != GrabStatus::SUCCESS {
+        return Err(LauncherError::Other("Could not grab keyboard".into()));
+    }
+
     conn.set_input_focus(InputFocus::POINTER_ROOT, win, 0u32)?;
     conn.flush()?;
 
-    draw_rect(
-        &conn,
-        win,
-        0,
-        0,
-        cfg.width,
-        cfg.height,
-        cfg.theme.bg_color,
-    )?;
+    draw_rect(&conn, win, 0, 0, cfg.width, cfg.height, cfg.theme.bg_color)?;
     draw_text(
         &conn,
         win,
@@ -330,7 +333,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                 }
             });
         }
-        
+
         let filtered = fuzzy::fuzzy_search(&query, cache_guard.get(), cfg.max_results);
 
         let max_visible = ((cfg.height.saturating_sub(cfg.padding * 4 + cfg.item_height))
