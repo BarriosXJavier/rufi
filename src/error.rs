@@ -15,6 +15,8 @@ pub enum LauncherError {
     Io(#[from] std::io::Error),
     #[error("TOML parsing error: {0}")]
     Toml(#[from] toml::de::Error),
+    #[error("TOML serialization error: {0}")]
+    TomlSer(#[from] toml::ser::Error),
     #[error("X11 parsing error: {0}")]
     X11Parse(#[from] x11rb::errors::ParseError),
     #[error("Error: {0}")]

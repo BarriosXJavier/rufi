@@ -153,10 +153,15 @@ pub fn draw_text(
     x: i16,
     y: i16,
     text: &str,
-    color: u32,
+    fg_color: u32,
+    bg_color: u32,
 ) -> Result<(), LauncherError> {
     let gc = conn.generate_id()?;
-    conn.create_gc(gc, window, &CreateGCAux::new().foreground(color))?;
+    conn.create_gc(
+        gc,
+        window,
+        &CreateGCAux::new().foreground(fg_color).background(bg_color),
+    )?;
     conn.image_text8(window, gc, x, y, text.as_bytes())?;
     conn.free_gc(gc)?;
     Ok(())
@@ -297,6 +302,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
         (cfg.height / 2) as i16,
         "Loading applications...",
         cfg.theme.fg_color,
+        cfg.theme.bg_color,
     )?;
     conn.flush()?;
 
@@ -378,6 +384,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
             (cfg.padding + cfg.font_size + 6) as i16,
             prompt,
             prompt_color,
+            cfg.theme.query_bg,
         )?;
 
         if !query.is_empty() {
@@ -389,6 +396,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                 (cfg.padding + cfg.font_size + 6) as i16,
                 &counter,
                 cfg.theme.fg_color,
+                cfg.theme.query_bg,
             )?;
         }
 
@@ -396,6 +404,12 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
         for (i, (item, _score)) in filtered.iter().enumerate().take(max_visible) {
             let y = list_start_y + (i as u16 * cfg.item_height);
             let is_selected = i == sel;
+
+            let (item_bg_color, item_fg_color) = if is_selected {
+                (cfg.theme.selected_bg, cfg.theme.selected_fg)
+            } else {
+                (cfg.theme.bg_color, cfg.theme.fg_color)
+            };
 
             if is_selected {
                 draw_rect(
@@ -405,15 +419,9 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                     y as i16,
                     cfg.width - cfg.padding * 2,
                     cfg.item_height,
-                    cfg.theme.selected_bg,
+                    item_bg_color,
                 )?;
             }
-
-            let fg_color = if is_selected {
-                cfg.theme.selected_fg
-            } else {
-                cfg.theme.fg_color
-            };
 
             // Item type indicator and name
             let text_x_offset = if cfg.show_icons && item.icon.is_some() {
@@ -436,17 +444,27 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
             };
 
             let display_text = format!("{} {}", type_indicator, item.display_name);
+
+            let has_desc = cfg.show_descriptions && item.description.is_some() && cfg.item_height > 24;
+
+            let display_text_y = if has_desc {
+                (y + 4 + cfg.font_size) as i16
+            } else {
+                (y + cfg.item_height / 2 + cfg.font_size / 3) as i16
+            };
+
             draw_text(
                 &conn,
                 win,
                 (cfg.padding + 12) as i16 + text_x_offset,
-                (y + cfg.font_size + 8) as i16,
+                display_text_y,
                 &display_text,
-                fg_color,
+                item_fg_color,
+                item_bg_color,
             )?;
 
             // Description if enabled and available
-            if cfg.show_descriptions && item.description.is_some() && cfg.item_height > 24 {
+            if has_desc {
                 let desc = item.description.as_ref().unwrap();
                 let desc = if desc.len() > 60 {
                     format!("{}...", &desc[..57])
@@ -455,7 +473,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                 };
 
                 let desc_color = if is_selected {
-                    cfg.theme.selected_fg
+                    item_fg_color
                 } else {
                     // Dimmed description color
                     let r = ((cfg.theme.fg_color >> 16) & 0xFF) * 3 / 4;
@@ -464,13 +482,15 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                     (r << 16) | (g << 8) | b
                 };
 
+                let desc_y = (y + 4 + cfg.font_size * 2) as i16;
                 draw_text(
                     &conn,
                     win,
                     (cfg.padding + 32) as i16 + text_x_offset,
-                    (y + cfg.font_size + 20) as i16,
+                    desc_y,
                     &desc,
                     desc_color,
+                    item_bg_color,
                 )?;
             }
         }

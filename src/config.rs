@@ -1,7 +1,7 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 
-#[derive(Deserialize, Debug, Clone, Copy)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 pub struct Theme {
     pub bg_color: u32,
     pub fg_color: u32,
@@ -12,7 +12,7 @@ pub struct Theme {
     pub accent_color: u32,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Config {
     pub font: String,
     pub font_size: u16,
@@ -33,10 +33,10 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             font: "JetBrains Mono".into(),
-            font_size: 14,
+            font_size: 18,
             width: 800,
             height: 500,
-            item_height: 32,
+            item_height: 48,
             padding: 16,
             border_width: 2,
             corner_radius: 12,
