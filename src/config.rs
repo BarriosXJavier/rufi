@@ -39,7 +39,7 @@ impl Default for Config {
             font_size: 18,
             width: 800,
             height: 500,
-            item_height: 48,
+            item_height: 64,
             padding: 16,
             border_width: 2,
             corner_radius: 12,

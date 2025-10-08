@@ -320,6 +320,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
 
     let mut query = String::new();
     let mut sel = 0usize;
+    let mut start_index = 0usize; // New: start_index
     let mut shift_down = false;
     let keymap = setup_keyboard_map(&conn)?;
 
@@ -347,6 +348,14 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
         let max_visible = max_visible.max(1).min(20);
 
         sel = sel.min(filtered.len().saturating_sub(1));
+
+        // New: Adjust start_index
+        if sel >= start_index + max_visible {
+            start_index = sel - max_visible + 1;
+        }
+        if sel < start_index {
+            start_index = sel;
+        }
 
         // Clear background
         draw_rect(&conn, win, 0, 0, cfg.width, cfg.height, cfg.theme.bg_color)?;
@@ -401,9 +410,17 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
         }
 
         let list_start_y = query_h + cfg.padding * 2;
-        for (i, (item, _score)) in filtered.iter().enumerate().take(max_visible) {
-            let y = list_start_y + (i as u16 * cfg.item_height);
-            let is_selected = i == sel;
+        let mut current_y = list_start_y;
+        for (idx, (item, _score)) in filtered.iter().enumerate().skip(start_index).take(max_visible) {
+            let has_desc = cfg.show_descriptions && item.description.is_some() && cfg.item_height > 24;
+            let current_item_height = if has_desc {
+                cfg.item_height + cfg.font_size + cfg.padding / 2 // Increased height for description
+            } else {
+                cfg.item_height
+            };
+
+            let y = current_y;
+            let is_selected = idx == sel;
 
             let (item_bg_color, item_fg_color) = if is_selected {
                 (cfg.theme.selected_bg, cfg.theme.selected_fg)
@@ -418,13 +435,12 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                     cfg.padding as i16,
                     y as i16,
                     cfg.width - cfg.padding * 2,
-                    cfg.item_height,
+                    current_item_height,
                     item_bg_color,
                 )?;
             }
 
-            // Item type indicator and name
-            let text_x_offset = if cfg.show_icons && item.icon.is_some() {
+            let text_start_x = if cfg.show_icons && item.icon.is_some() {
                 let icon_size = cfg.item_height - 8; // A bit smaller than item_height
                 let icon_x = cfg.padding as i16 + 4;
                 let icon_y = y as i16 + 4;
@@ -433,30 +449,24 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                         eprintln!("Failed to draw icon for {}: {}", item.display_name, e);
                     }
                 }
-                icon_size as i16 + 8 // Offset for text
+                (icon_x + icon_size as i16 + 8) as i16 // 8px gap after icon
             } else {
-                0
+                (cfg.padding + 12) as i16 // Default text start
             };
 
             let type_indicator = match item.item_type {
-                crate::commands::ItemType::Application => "📱",
-                crate::commands::ItemType::Command => "⚡",
+                crate::commands::ItemType::Application => "App:",
+                crate::commands::ItemType::Command => "Cmd:",
             };
 
             let display_text = format!("{} {}", type_indicator, item.display_name);
 
-            let has_desc = cfg.show_descriptions && item.description.is_some() && cfg.item_height > 24;
-
-            let display_text_y = if has_desc {
-                (y + cfg.item_height / 4 + cfg.font_size / 2) as i16
-            } else {
-                (y + cfg.item_height / 2 + cfg.font_size / 3) as i16
-            };
+            let display_text_y = (y + cfg.padding) as i16; // Position name with padding from top of current_item_height
 
             draw_text(
                 &conn,
                 win,
-                (cfg.padding + 12) as i16 + text_x_offset,
+                text_start_x,
                 display_text_y,
                 &display_text,
                 item_fg_color,
@@ -482,17 +492,18 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                     (r << 16) | (g << 8) | b
                 };
 
-                let desc_y = (y + cfg.item_height / 2 + cfg.font_size) as i16;
+                let desc_y = (y + cfg.padding + cfg.font_size + cfg.padding / 4) as i16; // Position description below name
                 draw_text(
                     &conn,
                     win,
-                    (cfg.padding + 32) as i16 + text_x_offset,
+                    text_start_x,
                     desc_y,
                     &desc,
                     desc_color,
                     item_bg_color,
                 )?;
             }
+            current_y += current_item_height;
         }
 
         conn.flush()?;
@@ -521,7 +532,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                     }
                     116 => {
                         // Down
-                        if !filtered.is_empty() && sel + 1 < filtered.len().min(max_visible) {
+                        if !filtered.is_empty() && sel + 1 < filtered.len() {
                             sel += 1;
                         }
                     }

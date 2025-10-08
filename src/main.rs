@@ -56,6 +56,16 @@ fn main() -> Result<(), error::LauncherError> {
     if let Some(theme_name) = args.theme {
         cfg.theme_name = Some(theme_name);
         cfg.resolve_theme();
+
+        // Save the theme to the config file
+        if let Some(path) = &cfg_path {
+            let toml_str = toml::to_string(&cfg)?;
+            fs::write(path, toml_str)?;
+            println!("Theme '{}' saved to {}", cfg.theme_name.clone().unwrap_or_default(), path.display());
+        } else {
+            eprintln!("Could not determine config path to save theme.");
+        }
+        // Do not return here, continue to launch UI
     }
 
     let (conn, screen_num) = RustConnection::connect(None)?;

@@ -99,10 +99,17 @@ rufi
 
 ### Command-line Options
 
-You can override the theme from the command line:
+You can set and save the default theme using the `--theme` flag:
 
 ```bash
-rufi --theme nord
+rufi --theme nord-dark
+```
+This command will update your `~/.config/rufi/rufirc.toml` file with the selected theme and then launch rufi with the new theme applied.
+
+To see a list of all available themes, run:
+
+```bash
+rufi --available-themes
 ```
 
 ### Keyboard Controls
