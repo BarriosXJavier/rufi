@@ -167,6 +167,15 @@ pub fn draw_text(
     Ok(())
 }
 
+const KEYCODE_A: u8 = 38;
+const KEYCODE_0: u8 = 10;
+const KEYCODE_SPACE: u8 = 65;
+const KEYCODE_MINUS: u8 = 20;
+const KEYCODE_EQUAL: u8 = 21;
+const KEYCODE_COMMA: u8 = 51;
+const KEYCODE_DOT: u8 = 52;
+const KEYCODE_SLASH: u8 = 53;
+
 pub fn setup_keyboard_map(
     conn: &RustConnection,
 ) -> Result<HashMap<u8, Vec<String>>, LauncherError> {
@@ -207,7 +216,7 @@ pub fn setup_keyboard_map(
     if map.is_empty() {
         // Basic ASCII mapping
         for i in 0..26 {
-            let keycode = 38 + i;
+            let keycode = KEYCODE_A + i;
             let lower = ((b'a' + i) as char).to_string();
             let upper = ((b'A' + i) as char).to_string();
             map.insert(keycode, vec![lower, upper]);
@@ -215,31 +224,40 @@ pub fn setup_keyboard_map(
 
         // Numbers
         for i in 0..10 {
-            let keycode = 10 + i;
+            let keycode = KEYCODE_0 + i;
             let num = ((b'0' + i) as char).to_string();
             map.insert(keycode, vec![num.clone(), num]);
         }
 
         // Common symbols
-        map.insert(65, vec![" ".to_string()]); // Space
-        map.insert(20, vec!["-".to_string(), "_".to_string()]);
-        map.insert(21, vec!["=".to_string(), "+".to_string()]);
-        map.insert(51, vec![",".to_string(), "<".to_string()]);
-        map.insert(52, vec!["._".to_string(), ">".to_string()]);
-        map.insert(53, vec!["/".to_string(), "?".to_string()]);
+        map.insert(KEYCODE_SPACE, vec![" ".to_string()]); // Space
+        map.insert(KEYCODE_MINUS, vec!["-".to_string(), "_".to_string()]);
+        map.insert(KEYCODE_EQUAL, vec!["=".to_string(), "+".to_string()]);
+        map.insert(KEYCODE_COMMA, vec![",".to_string(), "<".to_string()]);
+        map.insert(KEYCODE_DOT, vec![".".to_string(), ">".to_string()]);
+        map.insert(KEYCODE_SLASH, vec!["/".to_string(), "?".to_string()]);
     }
 
     Ok(map)
 }
 
+const KEYSYM_ASCII_START: u32 = 0x0020;
+const KEYSYM_ASCII_END: u32 = 0x007E;
+const KEYSYM_BACKSPACE: u32 = 0xFF08;
+const KEYSYM_TAB: u32 = 0xFF09;
+const KEYSYM_ENTER: u32 = 0xFF0D;
+const KEYSYM_ESCAPE: u32 = 0xFF1B;
+const KEYSYM_ARROW_START: u32 = 0xFF51;
+const KEYSYM_ARROW_END: u32 = 0xFF58;
+
 fn keysym_to_char(keysym: u32) -> Option<String> {
     match keysym {
-        0x0020..=0x007E => Some((keysym as u8 as char).to_string()), // ASCII printable
-        0xFF08 => None,                                              // Backspace
-        0xFF09 => Some("	".to_string()),                             // Tab
-        0xFF0D => None,                                              // Enter
-        0xFF1B => None,                                              // Escape
-        0xFF51..=0xFF58 => None,                                     // Arrow keys, etc.
+        KEYSYM_ASCII_START..=KEYSYM_ASCII_END => Some((keysym as u8 as char).to_string()), // ASCII printable
+        KEYSYM_BACKSPACE => None,                      // Backspace
+        KEYSYM_TAB => Some("\t".to_string()),          // Tab
+        KEYSYM_ENTER => None,                          // Enter
+        KEYSYM_ESCAPE => None,                         // Escape
+        KEYSYM_ARROW_START..=KEYSYM_ARROW_END => None, // Arrow keys, etc.
         _ => None,
     }
 }
@@ -344,14 +362,18 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
         let filtered = fuzzy::fuzzy_search(&query, cache_guard.get(), cfg.max_results);
 
         // Calculate item_heights for all filtered items
-        let item_heights: Vec<u16> = filtered.iter().map(|(item, _score)| {
-            let has_desc = cfg.show_descriptions && item.description.is_some() && cfg.item_height > 24;
-            if has_desc {
-                cfg.item_height + cfg.font_size + cfg.padding / 2
-            } else {
-                cfg.item_height
-            }
-        }).collect();
+        let item_heights: Vec<u16> = filtered
+            .iter()
+            .map(|(item, _score)| {
+                let has_desc =
+                    cfg.show_descriptions && item.description.is_some() && cfg.item_height > 24;
+                if has_desc {
+                    cfg.item_height + cfg.font_size + cfg.padding / 2
+                } else {
+                    cfg.item_height
+                }
+            })
+            .collect();
 
         sel = sel.min(filtered.len().saturating_sub(1));
 
@@ -371,6 +393,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                 }
             }
         }
+        // A LOT to fix here
         let max_visible = dynamic_max_visible.max(1); // Ensure at least one item is visible
 
         // Adjust start_index to keep sel in view
@@ -441,7 +464,8 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
             .iter()
             .enumerate()
             .skip(start_index)
-            .take(max_visible) // Use the dynamically calculated max_visible
+            .take(max_visible)
+        // Use the dynamically calculated max_visible
         {
             let has_desc =
                 cfg.show_descriptions && item.description.is_some() && cfg.item_height > 24;

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
-pub struct Theme {
+pub struct ConfigTheme {
     pub bg_color: u32,
     pub fg_color: u32,
     pub selected_bg: u32,
@@ -28,7 +28,7 @@ pub struct Config {
     pub show_descriptions: bool,
     pub show_icons: bool,
     pub cache_timeout: u64, // timeout in secs
-    pub theme: Theme,
+    pub theme: ConfigTheme,
 }
 
 impl Default for Config {
@@ -37,7 +37,7 @@ impl Default for Config {
             theme_name: Some("catppuccin-mocha".to_string()),
             font: "JetBrains Mono".into(),
             font_size: 18,
-            width: 800,
+            width: 500,
             height: 500,
             item_height: 64,
             padding: 16,
@@ -47,7 +47,7 @@ impl Default for Config {
             show_descriptions: true,
             show_icons: true,
             cache_timeout: 300,
-            theme: Theme {
+            theme: ConfigTheme {
                 bg_color: 0x1e1e2e,      // catppuccin mocha base
                 fg_color: 0xcdd6f4,      // catppuccin mocha text
                 selected_bg: 0x89b4fa,   // catppuccin mocha blue

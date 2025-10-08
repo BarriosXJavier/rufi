@@ -46,7 +46,7 @@ sudo cp target/release/rufi /usr/local/bin/
 
 ## Configuration
 
-Create `~/.rufirc` to customize rufi. The configuration file uses TOML format:
+Create `~/.config/rufi/rufirc.toml` to customize rufi. The configuration file uses TOML format:
 
 ```toml
 # Window settings
@@ -68,6 +68,8 @@ bg_color = 0x1e1e2e
 fg_color = 0xcdd6f4
 selected_bg = 0x89b4fa
 # ... more theme options
+
+Note: These theme options correspond to the `ConfigTheme` struct in the source code.
 ```
 
 ### Available Themes
@@ -148,9 +150,11 @@ Applications are prioritized over command-line tools in search results.
 src/
 ├── main.rs           # Main application logic
 ├── config.rs         # Configuration handling  
-├── search.rs         # Fuzzy search algorithms
-├── ui.rs            # X11 UI rendering
-└── items.rs         # Application/command collection
+├── fuzzy.rs          # Fuzzy search algorithms
+├── ui.rs             # X11 UI rendering
+├── commands.rs       # Application/command collection
+├── error.rs          # Custom error types
+└── theme.rs          # Built-in theme definitions
 ```
 
 ### Building for Development

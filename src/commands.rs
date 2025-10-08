@@ -137,13 +137,13 @@ fn parse_desktop_entry(path: &Path) -> Option<LaunchItem> {
         } else if line.starts_with("Hidden=true") {
             hidden = true;
         } else if line.starts_with("Name=") && name.is_none() {
-            name = Some(line[5..].to_string());
+            name = line.split_once('=').map(|(_, v)| v.to_string());
         } else if line.starts_with("Exec=") {
-            exec = Some(line[5..].to_string());
+            exec = line.split_once('=').map(|(_, v)| v.to_string());
         } else if line.starts_with("Comment=") {
-            comment = Some(line[8..].to_string());
+            comment = line.split_once('=').map(|(_, v)| v.to_string());
         } else if line.starts_with("Icon=") {
-            icon = Some(line[5..].to_string());
+            icon = line.split_once('=').map(|(_, v)| v.to_string());
         }
     }
 

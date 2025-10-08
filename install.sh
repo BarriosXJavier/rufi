@@ -117,7 +117,7 @@ setup_config() {
 # rufi configuration file
 font = "JetBrains Mono"
 font_size = 14
-width = 800
+width = 500
 height = 500
 item_height = 32
 padding = 16
