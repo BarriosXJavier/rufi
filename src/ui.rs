@@ -12,6 +12,7 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
     thread,
+    time,
 };
 use x11rb::{
     COPY_FROM_PARENT,
@@ -297,6 +298,8 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
 
     conn.map_window(win)?;
     conn.flush()?;
+
+    std::thread::sleep(std::time::Duration::from_millis(150));
 
     let grab_cookie = conn.grab_keyboard(
         true, // owner_events
