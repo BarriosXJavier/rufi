@@ -278,22 +278,36 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
     conn.set_input_focus(InputFocus::POINTER_ROOT, win, 0u32)?;
     conn.flush()?;
 
+    draw_rect(
+        &conn,
+        win,
+        0,
+        0,
+        cfg.width,
+        cfg.height,
+        cfg.theme.bg_color,
+    )?;
+    draw_text(
+        &conn,
+        win,
+        (cfg.width / 2 - 80) as i16,
+        (cfg.height / 2) as i16,
+        "Loading applications...",
+        cfg.theme.fg_color,
+    )?;
+    conn.flush()?;
+
     let cache = Arc::new(Mutex::new(ItemCache::new(cfg.cache_timeout)));
 
-    // background thread
-    let cache_clone = cache.clone();
-    thread::spawn(move || {
+    // Perform initial load synchronously to prevent empty list on first run
+    {
         let mut all_items = Vec::new();
         all_items.extend(collect_commands());
         all_items.extend(collect_applications());
-
-        if let Ok(mut cache_guard) = cache_clone.lock() {
+        if let Ok(mut cache_guard) = cache.lock() {
             cache_guard.update(all_items);
         }
-    });
-
-    // Wait a bit for initial load
-    thread::sleep(Duration::from_millis(100));
+    }
 
     let mut query = String::new();
     let mut sel = 0usize;

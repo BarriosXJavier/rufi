@@ -167,7 +167,6 @@ cargo clippy
 - [ ] Icon rendering support
 - [ ] Plugin system
 - [ ] Wayland support
-- [ ] Calculator mode
 - [ ] SSH/remote command execution
 - [ ] File browser mode
 - [ ] Window switcher mode
