@@ -343,24 +343,50 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
 
         let filtered = fuzzy::fuzzy_search(&query, cache_guard.get(), cfg.max_results);
 
-        let max_visible = ((cfg.height.saturating_sub(cfg.padding * 4 + cfg.item_height))
-            / cfg.item_height) as usize;
-        let max_visible = max_visible.max(1).min(20);
+        // Calculate item_heights for all filtered items
+        let item_heights: Vec<u16> = filtered.iter().map(|(item, _score)| {
+            let has_desc = cfg.show_descriptions && item.description.is_some() && cfg.item_height > 24;
+            if has_desc {
+                cfg.item_height + cfg.font_size + cfg.padding / 2
+            } else {
+                cfg.item_height
+            }
+        }).collect();
 
         sel = sel.min(filtered.len().saturating_sub(1));
 
-        // New: Adjust start_index
-        if sel >= start_index + max_visible {
-            start_index = sel - max_visible + 1;
+        // Determine max_visible dynamically based on available height
+        let mut current_display_height = 0;
+        let mut dynamic_max_visible = 0;
+        let query_h = cfg.item_height + cfg.padding;
+        let available_display_height = cfg.height.saturating_sub(query_h + cfg.padding * 2);
+
+        for i in start_index..filtered.len() {
+            if let Some(item_h) = item_heights.get(i) {
+                if current_display_height + *item_h <= available_display_height {
+                    current_display_height += *item_h;
+                    dynamic_max_visible += 1;
+                } else {
+                    break;
+                }
+            }
         }
-        if sel < start_index {
+        let max_visible = dynamic_max_visible.max(1); // Ensure at least one item is visible
+
+        // Adjust start_index to keep sel in view
+        if sel >= start_index + max_visible {
+            // If sel is below the current visible window, scroll down
+            start_index = sel - max_visible + 1;
+        } else if sel < start_index {
+            // If sel is above the current visible window, scroll up
             start_index = sel;
         }
+        // Clamp start_index to valid range
+        start_index = start_index.min(filtered.len().saturating_sub(max_visible).max(0));
 
         // Clear background
         draw_rect(&conn, win, 0, 0, cfg.width, cfg.height, cfg.theme.bg_color)?;
 
-        let query_h = cfg.item_height + cfg.padding;
         draw_rect(
             &conn,
             win,
@@ -411,8 +437,14 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
 
         let list_start_y = query_h + cfg.padding * 2;
         let mut current_y = list_start_y;
-        for (idx, (item, _score)) in filtered.iter().enumerate().skip(start_index).take(max_visible) {
-            let has_desc = cfg.show_descriptions && item.description.is_some() && cfg.item_height > 24;
+        for (idx, (item, _score)) in filtered
+            .iter()
+            .enumerate()
+            .skip(start_index)
+            .take(max_visible) // Use the dynamically calculated max_visible
+        {
+            let has_desc =
+                cfg.show_descriptions && item.description.is_some() && cfg.item_height > 24;
             let current_item_height = if has_desc {
                 cfg.item_height + cfg.font_size + cfg.padding / 2 // Increased height for description
             } else {
@@ -540,6 +572,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                         // Backspace
                         query.pop();
                         sel = 0;
+                        start_index = 0; // Reset start_index on query change
                     }
                     50 | 62 => {
                         // Shift (left/right)
