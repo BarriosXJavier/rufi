@@ -1,3 +1,4 @@
+use crate::theme;
 use serde::{Deserialize, Serialize};
 use std::fs;
 
@@ -14,6 +15,7 @@ pub struct Theme {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Config {
+    pub theme_name: Option<String>,
     pub font: String,
     pub font_size: u16,
     pub width: u16,
@@ -32,6 +34,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            theme_name: Some("catppuccin-mocha".to_string()),
             font: "JetBrains Mono".into(),
             font_size: 18,
             width: 800,
@@ -60,8 +63,24 @@ impl Default for Config {
 impl Config {
     pub fn load(path: &str) -> Self {
         match fs::read_to_string(path) {
-            Ok(data) => toml::from_str(&data).unwrap_or_default(),
-            Err(_) => Self::default(),
+            Ok(data) => {
+                let mut cfg: Config = toml::from_str(&data).unwrap_or_default();
+                cfg.resolve_theme();
+                cfg
+            }
+            Err(_) => {
+                let mut cfg = Self::default();
+                cfg.resolve_theme();
+                cfg
+            }
+        }
+    }
+
+    pub fn resolve_theme(&mut self) {
+        if let Some(theme_name) = &self.theme_name {
+            if let Some(theme) = theme::get_theme(theme_name) {
+                self.theme = theme;
+            }
         }
     }
 }

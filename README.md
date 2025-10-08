@@ -72,14 +72,18 @@ selected_bg = 0x89b4fa
 
 ### Available Themes
 
-rufi comes with several built-in themes:
-- **Catppuccin Mocha** (default)
-- **Nord**
-- **Dracula** 
-- **Tokyo Night**
-- **Gruvbox Dark**
+rufi comes with several built-in themes, with light and dark variations:
+- `catppuccin-mocha` (default)
+- `catppuccin-latte`
+- `nord-dark`
+- `nord-light`
+- `dracula`
+- `tokyo-night-dark`
+- `tokyo-night-light`
+- `gruvbox-dark`
+- `gruvbox-light`
 
-See the sample configuration for theme values.
+You can list all available themes with the `--available-themes` flag.
 
 ## Usage
 
@@ -91,6 +95,14 @@ rufi
 
 # Or bind to a key combination in your window manager
 # Example for i3/sway: bindsym $mod+d exec rufi
+```
+
+### Command-line Options
+
+You can override the theme from the command line:
+
+```bash
+rufi --theme nord
 ```
 
 ### Keyboard Controls
@@ -164,6 +176,7 @@ cargo clippy
 
 ### Feature Requests
 
+- [ ] Custom font support via Pango/Cairo for anti-aliased text
 - [ ] Icon rendering support
 - [ ] Plugin system
 - [ ] Wayland support

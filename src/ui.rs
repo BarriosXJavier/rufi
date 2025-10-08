@@ -448,7 +448,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
             let has_desc = cfg.show_descriptions && item.description.is_some() && cfg.item_height > 24;
 
             let display_text_y = if has_desc {
-                (y + 4 + cfg.font_size) as i16
+                (y + cfg.item_height / 4 + cfg.font_size / 2) as i16
             } else {
                 (y + cfg.item_height / 2 + cfg.font_size / 3) as i16
             };
@@ -482,7 +482,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                     (r << 16) | (g << 8) | b
                 };
 
-                let desc_y = (y + 4 + cfg.font_size * 2) as i16;
+                let desc_y = (y + cfg.item_height / 2 + cfg.font_size) as i16;
                 draw_text(
                     &conn,
                     win,

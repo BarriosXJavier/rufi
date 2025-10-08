@@ -22,3 +22,4 @@ x11rb = { version = "0.13.1", features = ["image"] }
 image = "0.25.1"
 resvg = "0.41.0"
 usvg = "0.41.0"
+clap = { version = "4.0", features = ["derive"] }
