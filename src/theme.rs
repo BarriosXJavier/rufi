@@ -56,7 +56,7 @@ pub fn get_theme(name: &str) -> Option<ConfigTheme> {
             query_bg: 0x24283b,
             accent_color: 0xbb9af7,
         }),
-        "tokyo-night-light" => Some(ConfigTheme {
+        "tokyonight-light" => Some(ConfigTheme {
             bg_color: 0xd5d6db,
             fg_color: 0x343b58,
             selected_bg: 0x3454a4,
@@ -94,8 +94,8 @@ pub fn list_themes() -> Vec<&'static str> {
         "nord-dark",
         "nord-light",
         "dracula",
-        "tokyo-night-dark",
-        "tokyo-night-light",
+        "tokyonight-dark",
+        "tokyonight-light",
         "gruvbox-dark",
         "gruvbox-light",
     ]

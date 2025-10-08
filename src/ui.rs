@@ -12,7 +12,6 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
     thread,
-    time,
 };
 use x11rb::{
     COPY_FROM_PARENT,
