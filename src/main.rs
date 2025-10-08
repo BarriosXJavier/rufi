@@ -1,13 +1,13 @@
+use clap::Parser;
 use std::fs;
 use x11rb::rust_connection::RustConnection;
-use clap::Parser;
 
 mod commands;
 mod config;
 mod error;
 mod fuzzy;
-mod ui;
 mod theme;
+mod ui;
 
 use config::Config;
 
