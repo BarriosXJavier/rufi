@@ -9,8 +9,6 @@ mod fuzzy;
 mod theme;
 mod ui;
 
-use config::Config;
-
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {

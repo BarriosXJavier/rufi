@@ -38,7 +38,7 @@ impl Default for Config {
             font: "JetBrains Mono".into(),
             font_size: 18,
             width: 450,
-            height:400,
+            height:350,
             item_height: 30,
             padding: 15,
             border_width: 2,

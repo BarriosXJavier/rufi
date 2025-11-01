@@ -288,6 +288,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                 EventMask::EXPOSURE
                     | EventMask::KEY_PRESS
                     | EventMask::KEY_RELEASE
+                    | EventMask::BUTTON_PRESS
                     | EventMask::STRUCTURE_NOTIFY
                     | EventMask::FOCUS_CHANGE,
             ),
@@ -314,29 +315,19 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
     conn.set_input_focus(InputFocus::POINTER_ROOT, win, 0u32)?;
     conn.flush()?;
 
-    draw_rect(&conn, win, 0, 0, cfg.width, cfg.height, cfg.theme.bg_color)?;
-    draw_text(
-        &conn,
-        win,
-        (cfg.width / 2 - 80) as i16,
-        (cfg.height / 2) as i16,
-        "Loading applications...",
-        cfg.theme.fg_color,
-        cfg.theme.bg_color,
-    )?;
-    conn.flush()?;
-
     let cache = Arc::new(Mutex::new(ItemCache::new(cfg.cache_timeout)));
+    let mut loading = true;
 
-    // Perform initial load synchronously to prevent empty list on first run
-    {
+    // Start initial load asynchronously to prevent blocking
+    let initial_cache = cache.clone();
+    thread::spawn(move || {
         let mut all_items = Vec::new();
         all_items.extend(collect_commands());
         all_items.extend(collect_applications());
-        if let Ok(mut cache_guard) = cache.lock() {
+        if let Ok(mut cache_guard) = initial_cache.lock() {
             cache_guard.update(all_items);
         }
-    }
+    });
 
     let mut query = String::new();
     let mut sel = 0usize;
@@ -348,6 +339,12 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
 
     loop {
         let cache_guard = cache.lock().unwrap();
+        let items = cache_guard.get();
+
+        // Update loading state based on whether we have items
+        if loading && !items.is_empty() {
+            loading = false;
+        }
 
         if cache_guard.is_expired() {
             let reloader_cache = cache.clone();
@@ -361,7 +358,25 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
             });
         }
 
-        let filtered = fuzzy::fuzzy_search(&query, cache_guard.get(), cfg.max_results);
+        let filtered = fuzzy::fuzzy_search(&query, items, cfg.max_results);
+
+        // Show loading message if still loading and no items
+        if loading && items.is_empty() {
+            draw_rect(&conn, win, 0, 0, cfg.width, cfg.height, cfg.theme.bg_color)?;
+            draw_text(
+                &conn,
+                win,
+                (cfg.width / 2 - 80) as i16,
+                (cfg.height / 2) as i16,
+                "Loading applications...",
+                cfg.theme.fg_color,
+                cfg.theme.bg_color,
+            )?;
+            conn.flush()?;
+            drop(cache_guard);
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            continue;
+        }
 
         // Calculate item_heights for all filtered items
         let item_heights: Vec<u16> = filtered
@@ -472,7 +487,7 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
             let has_desc =
                 cfg.show_descriptions && item.description.is_some() && cfg.item_height > 24;
             let current_item_height = if has_desc {
-                cfg.item_height + cfg.font_size + cfg.padding / 2 // Increased height for description
+                cfg.item_height + cfg.font_size + cfg.padding / 2 
             } else {
                 cfg.item_height
             };
@@ -531,7 +546,6 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
                 item_bg_color,
             )?;
 
-            // Description if enabled and available
             if has_desc {
                 let desc = item.description.as_ref().unwrap();
                 let desc = if desc.len() > 60 {
@@ -568,6 +582,19 @@ pub fn run_ui(cfg: Config, conn: RustConnection, screen_num: usize) -> Result<()
 
         let ev = conn.wait_for_event()?;
         match ev {
+            Event::FocusOut(_) => {
+                // Attempt to regain focus once
+                conn.set_input_focus(InputFocus::POINTER_ROOT, win, x11rb::CURRENT_TIME)?;
+                conn.flush()?;
+            }
+            Event::ButtonPress(_) => {
+                // Close on any mouse click
+                break;
+            }
+            Event::UnmapNotify(_) => {
+                // Window was unmapped, exit gracefully
+                break;
+            }
             Event::KeyPress(k) => {
                 let code = k.detail;
                 match code {
