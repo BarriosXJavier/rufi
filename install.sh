@@ -157,7 +157,6 @@ print_usage_info() {
     echo "    bspwm: super + d → rufi"
     echo "    awesome: awful.key({\$mod}, \"d\", function() awful.spawn(\"rufi\") end)"
     echo
-    print_status "For more information, visit: https://github.com/yourusername/rufi"
 }
 
 main() {
